@@ -145,14 +145,13 @@ class IncHandler(directory: File, cacheDir: File, scriptedLog: ManagedLogger)
         toCache
     }
     val analyzingCompiler = scalaCompiler(si, compilerBridge)
-    IncInstance(si, compiler.compilers(si, ClasspathOptionsUtil.boot, None, analyzingCompiler))
+    IncInstance(si, compiler.compilers(si, None, analyzingCompiler))
   }
 
   private final val unit = (_: Seq[String]) => ()
   def scalaCompiler(instance: xsbti.compile.ScalaInstance, bridgeJar: File): AnalyzingCompiler = {
     val bridgeProvider = ZincUtil.constantBridgeProvider(instance, bridgeJar)
-    val classpath = ClasspathOptionsUtil.boot
-    new AnalyzingCompiler(instance, bridgeProvider, classpath, unit, IncHandler.classLoaderCache)
+    new AnalyzingCompiler(instance, bridgeProvider, unit, IncHandler.classLoaderCache)
   }
 
   lazy val commands: Map[String, IncCommand] = Map(
@@ -416,6 +415,7 @@ case class ProjectStructure(
                              classesDir,
                              scalacOptions,
                              Array(),
+                             ClasspathOptionsUtil.boot(),
                              maxErrors,
                              Array(),
                              CompileOrder.Mixed,
