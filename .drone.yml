@@ -51,7 +51,8 @@ pipeline:
       - ./bin/sbt-ci.sh \
           "set pgpPublicRing in Global := file(\"/drone/.gnupg/pubring.asc\")" \
           "set pgpSecretRing in Global := file(\"/drone/.gnupg/secring.asc\")" \
-          "zincRoot/releaseEarly"
+          "zincRoot/releaseEarly" \
+          "sonatypeReleaseAll"
 
   rebuild_cache:
     image: appleboy/drone-sftp-cache
