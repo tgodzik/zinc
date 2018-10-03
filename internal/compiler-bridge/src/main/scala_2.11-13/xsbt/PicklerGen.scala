@@ -38,7 +38,7 @@ final class PicklerGen(val global: CallbackGlobal) extends Compat with GlobalHel
       new URI("pickle", global.hashCode().toString, global.currentRunId.toString)
 
     case class PickleMapping(name: String, symbol: Symbol, bytes: Array[Byte])
-    def toMappings(pickles: mutable.HashMap[global.Symbol, PickleBuffer]): List[PickleMapping] = {
+    def toMappings(pickles: mutable.Map[global.Symbol, PickleBuffer]): List[PickleMapping] = {
       pickles.toList.flatMap {
         case (symbol, pickle) =>
           val javaName = symbol.javaBinaryNameString
