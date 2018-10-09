@@ -6,6 +6,7 @@ import java.util
 import java.util.Optional
 
 import xsbti.api.{ ClassLike, DependencyContext }
+import xsbti.compile.IR
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -78,7 +79,7 @@ class TestCallback extends AnalysisCallback {
 
   override def dependencyPhaseCompleted(): Unit = {}
   override def apiPhaseCompleted(): Unit = {}
-  override def picklerPhaseCompleted(handle: URI): Unit = {}
+  override def irCompleted(irs: Array[IR]): Unit = {}
 }
 
 object TestCallback {

@@ -89,7 +89,7 @@ class OutlineSpecification extends UnitSpec {
     // The compilation is sequential (whereas it could be in parallel), but there
     // is no resource sharing (e.g. class dirs) so it emulates a real-world scenario.
     val compiler.CompilationResult(_, testCallback, _) =
-      compiler.compileProject(projectA, Nil, Nil)
+      compiler.compileProject(projectA, Nil, Array.empty)
     val dependencies = TestCallback.fromCallback(testCallback)
     assert(dependencies.memberRef("A") === Set.empty)
     assert(dependencies.memberRef("T") === Set("SuperAccessorApply", "SuperAccessorSelect"))

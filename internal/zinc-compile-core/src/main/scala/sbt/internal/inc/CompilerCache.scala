@@ -12,11 +12,12 @@ package inc
 import java.util
 
 import xsbti.{ Reporter, Logger => xLogger }
-import xsbti.compile.{ CachedCompiler, CachedCompilerProvider, GlobalsCache, Output }
+import xsbti.compile.{ CachedCompiler, CachedCompilerProvider, GlobalsCache, IRStore, Output }
 import sbt.util.InterfaceUtil.{ toSupplier => f0 }
 
 /**
  * Manage a number of <code>maxInstance</code> of cached Scala compilers.
+ *
  * @param maxInstances The maximum number to be cached.
  */
 final class CompilerCache(val maxInstances: Int) extends GlobalsCache {

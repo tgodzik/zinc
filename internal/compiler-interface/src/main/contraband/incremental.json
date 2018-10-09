@@ -321,17 +321,11 @@
           "since": "0.1.0"
         },
         {
-          "name": "picklepath",
-          "type": "java.net.URI*",
-          "default": "new java.net.URI[0]",
-          "doc": [
-            "Defines the picklepath to use for compilation.",
-            "A pickle path is the collection of URI handles that identify in-memory",
-            "Scala pickles. These pickles allow Zinc to pipeline compilation of",
-            "multi-module builds, allowing downstream modules to start compilation",
-            "after the phase pickler has been executed in all the dependent modules."
-          ],
-          "since": "1.2.0"
+          "name": "store",
+          "type": "xsbti.compile.IRStore",
+          "default": "xsbti.compile.EmptyIRStore.getStore()",
+          "doc": "Defines the IR store to use for compilation. Check the scaladoc of IR store.",
+          "since": "1.3.0"
         }
       ]
     },
@@ -476,22 +470,22 @@
         },
         { "name": "extra", "type": "xsbti.T2<String, String>*" },
         {
-          "name": "picklePromise",
-          "type": "java.util.concurrent.CompletableFuture<java.util.Optional<java.net.URI>>",
-          "default": "defaultPicklePromise()",
+          "name": "irPromise",
+          "type": "java.util.concurrent.CompletableFuture<xsbti.compile.IR[]>",
+          "default": "defaultIRPromise()",
           "doc": [
             "Allows the analysis callback to complete the future when",
             "the compiler is past the pickler gen phase, so that compilation",
             "clients can potentially start compilation of downstream projects."
           ],
-          "since": "1.2.0"
+          "since": "1.3.0"
         }
       ],
 
       "extra": [
-        "public static java.util.concurrent.CompletableFuture<java.util.Optional<java.net.URI>> defaultPicklePromise() {",
-        "    java.util.concurrent.CompletableFuture<java.util.Optional<java.net.URI>> p = new java.util.concurrent.CompletableFuture<java.util.Optional<java.net.URI>>();",
-        "    p.complete(java.util.Optional.empty());",
+        "public static java.util.concurrent.CompletableFuture<xsbti.compile.IR[]> defaultIRPromise() {",
+        "    java.util.concurrent.CompletableFuture<xsbti.compile.IR[]> p = new java.util.concurrent.CompletableFuture<xsbti.compile.IR[]>();",
+        "    p.complete(new xsbti.compile.IR[0]);",
         "    return p;",
         "}"
       ]

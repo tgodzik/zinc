@@ -14,13 +14,11 @@ import scala.tools.nsc._
 import io.AbstractFile
 import java.io.File
 
-import com.github.difflib.{ DiffUtils, UnifiedDiffUtils }
-
 /** Defines the interface of the incremental compiler hiding implementation details. */
 sealed abstract class CallbackGlobal(
     settings: Settings,
     reporter: reporters.Reporter,
-    output: Output
+    val output: Output
 ) extends Global(settings, reporter)
     with ZincPicklePath {
 
@@ -261,6 +259,7 @@ sealed class ZincCompiler(
 
   final def set(callback: AnalysisCallback, dreporter: DelegatingReporter): Unit = {
     this.callback0 = callback
+    this.clearStore()
     reporter = dreporter
   }
 

@@ -55,7 +55,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       javacChosen,
       sources,
       classpath,
-      picklepath,
+      store,
       CompileOutput(classesDirectory),
       cache,
       progress().toOption,
@@ -70,7 +70,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       skip,
       incrementalCompilerOptions,
       extraOptions,
-      picklePromise
+      irPromise
     )(logger)
   }
 
@@ -136,7 +136,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       javaCompiler,
       sources,
       classpath.toSeq,
-      Nil,
+      EmptyIRStore.getStore(),
       output,
       cache,
       progress.toOption,
@@ -151,7 +151,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       skip: Boolean,
       incrementalOptions,
       extraInScala,
-      Setup.defaultPicklePromise()
+      Setup.defaultIRPromise()
     )(logger)
   }
 
@@ -230,7 +230,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       javaCompiler: xsbti.compile.JavaCompiler,
       sources: Array[File],
       classpath: Seq[File],
-      picklepath: Seq[URI],
+      store: IRStore,
       output: Output,
       cache: GlobalsCache,
       progress: Option[CompileProgress] = None,
@@ -245,7 +245,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       skip: Boolean = false,
       incrementalOptions: IncOptions,
       extra: List[(String, String)],
-      picklePromise: CompletableFuture[Optional[URI]]
+      irPromise: CompletableFuture[Array[IR]]
   )(implicit logger: Logger): CompileResult = {
     handleCompilationError(sources, output, logger) {
       val prev = previousAnalysis match {
@@ -257,7 +257,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
         javaCompiler,
         sources,
         classpath,
-        picklepath,
+        store,
         output,
         cache,
         progress,
@@ -277,7 +277,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       else {
         val (analysis, changed) = compileInternal(
           MixedAnalyzingCompiler(config)(logger),
-          picklePromise,
+          irPromise,
           equivCompileSetup(
             equivOpts0(equivScalacOptions(incrementalOptions.ignoredScalacOptions))),
           equivPairs,
@@ -295,7 +295,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
    */
   private[sbt] def compileInternal(
       mixedCompiler: MixedAnalyzingCompiler,
-      picklePromise: CompletableFuture[Optional[URI]],
+      irPromise: CompletableFuture[Array[IR]],
       equiv: Equiv[MiniSetup],
       equivPairs: Equiv[Array[T2[String, String]]],
       log: Logger
@@ -325,7 +325,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       output,
       log,
       incOptions,
-      picklePromise
+      irPromise
     )
     compile.swap
   }

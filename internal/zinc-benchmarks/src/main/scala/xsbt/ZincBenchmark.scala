@@ -14,7 +14,7 @@ import sbt.internal.util.ConsoleLogger
 import sbt.io.{ IO, RichFile }
 import xsbt.ZincBenchmark.CompilationInfo
 import xsbti._
-import xsbti.compile.SingleOutput
+import xsbti.compile.{ EmptyIRStore, SingleOutput }
 
 import scala.util.Try
 
@@ -142,6 +142,7 @@ private[xsbt] object ZincBenchmark {
     val delegatingReporter = DelegatingReporter(settings, ConsoleReporter)
     val compiler: ZincCompiler = cachedCompiler.compiler
     compiler.set(analysisCallback, delegatingReporter)
+    compiler.setUpIRStore(EmptyIRStore.getStore)
     compiler
   }
 

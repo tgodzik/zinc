@@ -13,28 +13,25 @@ import xsbti.compile._
 import scala.collection.mutable
 import Log.debug
 import java.io.File
-import java.net.URI
 
 final class CompilerInterface {
-  def newCompiler(options: Array[String],
-                  output: Output,
-                  initialLog: Logger,
-                  initialDelegate: Reporter): CachedCompiler =
-    new CachedCompiler0(options, output, new WeakLog(initialLog, initialDelegate))
+  def newCompiler(
+      options: Array[String],
+      output: Output,
+      initialLog: Logger,
+      initialDelegate: Reporter
+  ): CachedCompiler = new CachedCompiler0(options, output, new WeakLog(initialLog, initialDelegate))
 
-  def run(sources: Array[File],
-          changes: DependencyChanges,
-          callback: AnalysisCallback,
-          log: Logger,
-          delegate: Reporter,
-          progress: CompileProgress,
-          cached: CachedCompiler): Unit =
-    cached.run(sources, changes, callback, log, delegate, progress)
-
-  def setUpPicklepath(picklepath: Array[URI], cached: CachedCompiler): Unit = cached match {
-    case zincCompiler: CachedCompiler0 => zincCompiler.setUpPicklepath(picklepath.toList)
-    case _                             => ()
-  }
+  def run(
+      sources: Array[File],
+      changes: DependencyChanges,
+      callback: AnalysisCallback,
+      log: Logger,
+      delegate: Reporter,
+      progress: CompileProgress,
+      store: IRStore,
+      cached: CachedCompiler
+  ): Unit = cached.run(sources, changes, callback, log, delegate, progress, store)
 }
 
 class InterfaceCompileFailed(val arguments: Array[String],
@@ -65,12 +62,6 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
   /////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////// INITIALIZATION CODE ////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  @volatile var picklepath: List[URI] = Nil
-  def setUpPicklepath(picklepath0: List[URI]): Unit = {
-    picklepath = picklepath0
-    ()
-  }
 
   val settings = new ZincSettings(s => initialLog(s))
   output match {
@@ -113,16 +104,21 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
           changes: DependencyChanges,
           callback: AnalysisCallback,
           log: Logger,
-          delegate: Reporter,
-          progress: CompileProgress): Unit = synchronized {
-    if (!picklepath.isEmpty) {
-      debug(log, s"Setting up pickle path that contains ${picklepath.mkString(", ")}")
-      compiler.extendClassPathWithPicklePath(picklepath)
-    }
+          reporter: Reporter,
+          compileProgress: CompileProgress): Unit = {
+    run(sources, changes, callback, log, reporter, compileProgress, EmptyIRStore.getStore)
+  }
 
+  def run(sources: Array[File],
+          changes: DependencyChanges,
+          callback: AnalysisCallback,
+          log: Logger,
+          delegate: Reporter,
+          progress: CompileProgress,
+          store: IRStore): Unit = synchronized {
     debug(log, infoOnCachedCompiler(hashCode().toLong.toHexString))
     val dreporter = DelegatingReporter(settings, delegate)
-    try { run(sources.toList, changes, callback, log, dreporter, progress) } finally {
+    try { run(sources.toList, changes, callback, log, dreporter, progress, store) } finally {
       dreporter.dropDelegate()
     }
   }
@@ -135,8 +131,8 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
                         callback: AnalysisCallback,
                         log: Logger,
                         underlyingReporter: DelegatingReporter,
-                        compileProgress: CompileProgress): Unit = {
-
+                        compileProgress: CompileProgress,
+                        store: IRStore): Unit = {
     if (command.shouldStopWithInfo) {
       underlyingReporter.info(null, command.getInfoMessage(compiler), true)
       throw new InterfaceCompileFailed(args, Array(), StopInfoError)
@@ -144,6 +140,7 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 
     if (noErrors(underlyingReporter)) {
       debug(log, prettyPrintCompilationArguments(args))
+      compiler.setUpIRStore(store)
       compiler.set(callback, underlyingReporter)
       val run = new compiler.ZincRun(compileProgress)
       val sortedSourceFiles = sources.map(_.getAbsolutePath).sortWith(_ < _)

@@ -19,7 +19,7 @@ abstract class ZincSymbolLoaders extends GlobalSymbolLoaders with ZincPickleComp
         enterToplevelsFromSource(owner, classRep.name, src)
       case (Some(bin), _) =>
         // If the abstract file comes from our pickle index, use our own loader
-        if (bin.path.startsWith(PicklerGen.root)) {
+        if (bin.path.startsWith(PicklerGen.rootStartId)) {
           enterClassAndModule(owner, classRep.name, new ZincPickleLoader(bin))
         } else {
           enterClassAndModule(owner, classRep.name, new ClassfileLoader(bin))

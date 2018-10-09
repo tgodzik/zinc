@@ -8,9 +8,9 @@
 package xsbti;
 
 import xsbti.api.DependencyContext;
+import xsbti.compile.IR;
 
 import java.io.File;
-import java.net.URI;
 import java.util.EnumSet;
 
 public interface AnalysisCallback {
@@ -170,13 +170,9 @@ public interface AnalysisCallback {
     /**
      * Communicate to the callback that the API phase has finished.
      *
-     * For instance, you can use this method it to wait on asynchronous tasks.
-     *
-     * @param handle The URI that can be used to pass it in to downstream projects.
-     *               This URI serves as a unique identifier of the pickle files generated
-     *               in this compiler run, so every run generates a new URL.
+     * @param irs A sequence of IRs that can be used for build pipelining.
      */
-    void picklerPhaseCompleted(URI handle);
+    void irCompleted(IR[] irs);
 
     /**
      * Return whether incremental compilation is enabled or not.

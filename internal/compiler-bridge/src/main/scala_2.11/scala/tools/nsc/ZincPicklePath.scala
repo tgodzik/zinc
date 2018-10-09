@@ -2,28 +2,40 @@ package scala.tools.nsc
 
 import java.net.{URI, URL}
 
-import xsbt.{PicklerGen, PickleVirtualDirectory, PickleVirtualFile}
+import xsbt.{CallbackGlobal, PickleVirtualDirectory, PickleVirtualFile, PicklerGen}
+import xsbti.compile.{EmptyIRStore, IRStore}
 
 import scala.collection.immutable
 import scala.tools.nsc.io.AbstractFile
+import scala.tools.nsc.util.ClassPath
 import scala.tools.nsc.util.ClassPath.ClassPathContext
 import scala.tools.nsc.util.{DirectoryClassPath, MergedClassPath}
 
 trait ZincPicklePath {
   self: Global =>
 
-  def extendClassPathWithPicklePath(picklepath: List[URI]): Unit = {
-    val rootPickleDirs = picklepath.map { entry =>
-      PicklerGen.urisToRoot.get(entry) match {
-        // We need cast because global `urisToRoot` doesn't have access to global
-        case Some(dir) => dir.asInstanceOf[PickleVirtualDirectory]
-        case None      => sys.error(s"Invalid pickle path entry $entry. No pickle associated with it.")
-      }
+  private[this] var store0: IRStore = EmptyIRStore.getStore()
+
+  /** Returns the active IR store, set by [[setUpIRStore()]] and cleared by [[clearStore()]]. */
+  def store: IRStore = store0
+
+  def clearStore(): Unit = {
+    this.store0 = EmptyIRStore.getStore()
+  }
+
+  private[this] var originalClassPath: ClassPath[AbstractFile] = null
+  def setUpIRStore(store: IRStore): Unit = {
+    val rootPickleDirs = PicklerGen.toVirtualDirectory(store.getDependentsIRs())
+    // When resident compilation is enabled, make sure `platform.classPath` points to the original classpath
+    val context = platform.classPath.context
+    val pickleClassPaths = new ZincVirtualDirectoryClassPath(rootPickleDirs, context)
+
+    // We do this so that when resident compilation is enabled, pipelining works
+    if (originalClassPath == null) {
+      originalClassPath = platform.classPath
     }
 
-    val context = platform.classPath.context
-    val pickleClassPaths = rootPickleDirs.map(d => new ZincVirtualDirectoryClassPath(d, context))
-    val newEntries = pickleClassPaths ++: platform.classPath.entries
+    val newEntries = List(pickleClassPaths) ++: originalClassPath.entries
     val newClassPath = new MergedClassPath(newEntries, context)
     platform.currentClassPath = Some(newClassPath)
   }
