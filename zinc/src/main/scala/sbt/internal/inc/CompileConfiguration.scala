@@ -18,6 +18,7 @@ import xsbti.compile.{
   CompileAnalysis,
   CompileProgress,
   GlobalsCache,
+  IRStore,
   IncOptions,
   MiniSetup,
   PerClasspathEntryLookup
@@ -29,6 +30,7 @@ import xsbti.compile.{
  * @param sources
  * @param classpath
  * @param classpathOptions
+ * @param store
  * @param previousAnalysis
  * @param previousSetup
  * @param currentSetup
@@ -44,7 +46,7 @@ final class CompileConfiguration(
     val sources: Seq[File],
     val classpath: Seq[File],
     val classpathOptions: ClasspathOptions,
-    val picklepath: Seq[URI],
+    val store: IRStore,
     val previousAnalysis: CompileAnalysis,
     val previousSetup: Option[MiniSetup],
     val currentSetup: MiniSetup,

@@ -1,28 +1,38 @@
 package scala.tools.nsc
 
-import java.io.{ ByteArrayInputStream, InputStream }
-import java.net.{ URI, URL }
+import java.net.URL
 
 import xsbt.PicklerGen
+import xsbti.compile.{EmptyIRStore, IRStore}
 
-import scala.collection.mutable
-import scala.reflect.io.NoAbstractFile
-import scala.tools.nsc.classpath.{ AggregateClassPath, ClassPathFactory, VirtualDirectoryClassPath }
-import scala.tools.nsc.io.{ AbstractFile, VirtualDirectory, VirtualFile }
+import scala.tools.nsc.classpath.{AggregateClassPath, VirtualDirectoryClassPath}
+import scala.tools.nsc.io.VirtualDirectory
+import scala.tools.nsc.util.ClassPath
 
 trait ZincPicklePath {
   self: Global =>
 
-  def extendClassPathWithPicklePath(picklepath: List[URI]): Unit = {
-    val rootPickleDirs = picklepath.map { entry =>
-      PicklerGen.urisToRoot.get(entry) match {
-        case Some(dir) => dir
-        case None      => sys.error(s"Invalid pickle path entry $entry. No pickle associated with it.")
-      }
+  private[this] var store0: IRStore = EmptyIRStore.getStore()
+
+  /** Returns the active IR store, set by [[setUpIRStore()]] and cleared by [[clearStore()]]. */
+  def store: IRStore = store0
+
+  def clearStore(): Unit = {
+    this.store0 = EmptyIRStore.getStore()
+  }
+
+  private[this] var originalClassPath: ClassPath = null
+  def setUpIRStore(store: IRStore): Unit = {
+    this.store0 = store
+    val rootPickleDirs = PicklerGen.toVirtualDirectory(store.getDependentsIRs())
+    val pickleClassPaths = new ZincVirtualDirectoryClassPath(rootPickleDirs)
+
+    // We do this so that when resident compilation is enabled, pipelining works
+    if (originalClassPath == null) {
+      originalClassPath = platform.classPath
     }
 
-    val pickleClassPaths = rootPickleDirs.map(d => new ZincVirtualDirectoryClassPath(d))
-    val allClassPaths = pickleClassPaths ++ List(platform.classPath)
+    val allClassPaths = pickleClassPaths :: originalClassPath :: Nil
     val newClassPath = AggregateClassPath.createAggregate(allClassPaths: _*)
     platform.currentClassPath = Some(newClassPath)
   }

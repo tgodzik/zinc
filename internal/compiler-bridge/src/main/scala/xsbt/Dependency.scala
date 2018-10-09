@@ -125,6 +125,11 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
           case pf: PlainFile =>
             // The dependency comes from a class file
             binaryDependency(pf.file, binaryClassName)
+
+          case PicklerGen.PickleFile(f) =>
+            // The dependency comes from an in-memory ir (build pipelining is enabled)
+            binaryDependency(f, binaryClassName)
+
           case _ =>
             reporter.error(
               NoPosition,

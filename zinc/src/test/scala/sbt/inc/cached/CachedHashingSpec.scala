@@ -9,9 +9,11 @@ package sbt.inc.cached
 
 import java.nio.file.{ Path, Paths }
 import java.io.File
+
 import sbt.inc.{ BaseCompilerSpec, SourceFiles }
 import sbt.internal.inc.{ Analysis, CompileOutput, MixedAnalyzingCompiler }
 import sbt.io.IO
+import xsbti.compile.{ EmptyIRStore }
 
 class CachedHashingSpec extends BaseCompilerSpec {
   def timeMs[R](block: => R): Long = {
@@ -41,7 +43,7 @@ class CachedHashingSpec extends BaseCompilerSpec {
         javac,
         options.sources,
         giganticClasspath,
-        Nil,
+        EmptyIRStore.getStore(),
         CompileOutput(options.classesDirectory),
         setup.cache,
         setup.progress.toOption,
@@ -85,7 +87,7 @@ class CachedHashingSpec extends BaseCompilerSpec {
         javac,
         options.sources,
         List(fakeLibraryJar),
-        Nil,
+        EmptyIRStore.getStore,
         CompileOutput(options.classesDirectory),
         setup.cache,
         setup.progress.toOption,

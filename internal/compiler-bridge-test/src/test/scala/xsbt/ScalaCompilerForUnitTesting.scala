@@ -1,7 +1,7 @@
 package xsbt
 
 import xsbti.TestCallback.ExtractedClassDependencies
-import xsbti.compile.SingleOutput
+import xsbti.compile.{EmptyIRStore, IR, IRStore, Output, SingleOutput}
 import java.io.File
 import java.net.URI
 import java.nio.file.Files
@@ -174,12 +174,17 @@ class ScalaCompilerForUnitTesting {
     }
   }
 
+  final class IRStoreImpl(irs: Array[IR]) extends IRStore {
+    override def getDependentsIRs: Array[IR] = irs
+    override def merge(other: IRStore): IRStore = new IRStoreImpl(other.getDependentsIRs() ++ irs)
+  }
+
   case class Project(srcs: List[String], callback: TestCallback, compilerArgs: List[String] = Nil)
   case class CompilationResult(classesDir: File, testCallback: TestCallback, compiler: ZincCompiler)
   private[xsbt] def compileProject(
       project: Project,
       classpath: List[File],
-      picklePath: List[URI],
+      irs: Array[IR],
       maybeCompiler: Option[ZincCompiler] = None
   ): CompilationResult = {
     val callback = project.callback
@@ -191,8 +196,11 @@ class ScalaCompilerForUnitTesting {
       val compiler = maybeCompiler
         .map(p => { p.set(callback, p.reporter.asInstanceOf[DelegatingReporter]); p })
         .getOrElse(prepareCompiler(classesDir, callback, fullClasspath, project.compilerArgs))
-      if (!picklePath.isEmpty)
-        compiler.extendClassPathWithPicklePath(picklePath)
+
+      if (!irs.isEmpty) {
+        compiler.setUpIRStore(new IRStoreImpl(irs))
+      }
+
       val run = new compiler.Run
       val srcFiles = project.srcs.zipWithIndex map {
         case (src, i) =>
@@ -238,6 +246,7 @@ class ScalaCompilerForUnitTesting {
     settings.usejavacp.value = true
     val delegatingReporter = DelegatingReporter(settings, ConsoleReporter)
     val compiler = cachedCompiler.compiler
+    compiler.setUpIRStore(EmptyIRStore.getStore)
     compiler.set(analysisCallback, delegatingReporter)
     compiler
   }

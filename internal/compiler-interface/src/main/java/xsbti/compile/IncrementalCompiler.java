@@ -12,7 +12,6 @@ import xsbti.Reporter;
 import xsbti.T2;
 
 import java.io.File;
-import java.net.URI;
 import java.util.Optional;
 
 /*

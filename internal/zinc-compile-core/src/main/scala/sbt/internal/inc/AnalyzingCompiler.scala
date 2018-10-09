@@ -73,7 +73,8 @@ final class AnalyzingCompiler(
     compile(sources, changes, arguments.toArray, output, callback, reporter, cache, log, progress)
   }
 
-  def compile(
+  @deprecated("Use the `compile` variant that takes an IR store directly instead.")
+  override def compile(
       sources: Array[File],
       changes: DependencyChanges,
       options: Array[String],
@@ -84,18 +85,57 @@ final class AnalyzingCompiler(
       log: xLogger,
       progressOpt: Optional[CompileProgress]
   ): Unit = {
+    compile(
+      sources,
+      changes,
+      options,
+      output,
+      callback,
+      reporter,
+      cache,
+      log,
+      progressOpt,
+      EmptyIRStore.getStore()
+    )
+  }
+
+  override def compile(
+      sources: Array[File],
+      changes: DependencyChanges,
+      options: Array[String],
+      output: Output,
+      callback: AnalysisCallback,
+      reporter: Reporter,
+      cache: GlobalsCache,
+      log: xLogger,
+      progressOpt: Optional[CompileProgress],
+      store: IRStore
+  ): Unit = {
     val cached = cache(options, output, !changes.isEmpty, this, log, reporter)
     val progress = if (progressOpt.isPresent) progressOpt.get else IgnoreProgress
     compile(sources, changes, callback, log, reporter, progress, cached)
   }
 
-  def compile(
+  override def compile(
       sources: Array[File],
       changes: DependencyChanges,
       callback: AnalysisCallback,
       log: xLogger,
       reporter: Reporter,
       progress: CompileProgress,
+      compiler: CachedCompiler
+  ): Unit = {
+    compile(sources, changes, callback, log, reporter, progress, EmptyIRStore.getStore(), compiler)
+  }
+
+  override def compile(
+      sources: Array[File],
+      changes: DependencyChanges,
+      callback: AnalysisCallback,
+      log: xLogger,
+      reporter: Reporter,
+      progress: CompileProgress,
+      store: IRStore,
       compiler: CachedCompiler
   ): Unit = {
     onArgsHandler(compiler.commandArguments(sources))
@@ -106,36 +146,10 @@ final class AnalyzingCompiler(
       classOf[xLogger],
       classOf[Reporter],
       classOf[CompileProgress],
+      classOf[IRStore],
       classOf[CachedCompiler]
-    )(sources, changes, callback, log, reporter, progress, compiler)
+    )(sources, changes, callback, log, reporter, progress, store, compiler)
     ()
-  }
-
-  def compileAndSetUpPicklepath(
-      sources: Array[File],
-      picklepath: Array[URI],
-      changes: DependencyChanges,
-      options: Array[String],
-      output: Output,
-      callback: AnalysisCallback,
-      reporter: Reporter,
-      cache: GlobalsCache,
-      log: xLogger,
-      progressOpt: Optional[CompileProgress]
-  ): Unit = {
-    def setUpPicklePath(compiler: CachedCompiler): Unit = {
-      call("xsbt.CompilerInterface", "setUpPicklepath", log)(
-        classOf[Array[URI]],
-        classOf[CachedCompiler]
-      )(picklepath, compiler)
-      ()
-    }
-
-    //val optionsWithPickleId =
-    val cached = cache(options, output, !changes.isEmpty, this, log, reporter)
-    setUpPicklePath(cached)
-    val progress = if (progressOpt.isPresent) progressOpt.get else IgnoreProgress
-    compile(sources, changes, callback, log, reporter, progress, cached)
   }
 
   def newCachedCompiler(
@@ -143,8 +157,7 @@ final class AnalyzingCompiler(
       output: Output,
       log: xLogger,
       reporter: Reporter
-  ): CachedCompiler =
-    newCachedCompiler(arguments: Seq[String], output, log, reporter)
+  ): CachedCompiler = newCachedCompiler(arguments: Seq[String], output, log, reporter)
 
   def newCachedCompiler(
       arguments: Seq[String],

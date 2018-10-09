@@ -1,10 +1,12 @@
 package xsbt
 
-import java.io.{ ByteArrayInputStream, InputStream }
+import java.io.{ByteArrayInputStream, InputStream}
+
+import xsbti.compile.IR
 
 import scala.collection.mutable
 import scala.reflect.io.NoAbstractFile
-import scala.tools.nsc.io.{ AbstractFile, VirtualDirectory, VirtualFile }
+import scala.tools.nsc.io.{AbstractFile, VirtualDirectory, VirtualFile}
 
 /**
  * Defines an almost exact copy of `VirtualDirectory` but allowing us to use
@@ -31,10 +33,10 @@ final class PickleVirtualDirectory(
     }
   }
 
-  def pickleFileNamed(name: String, bytes: Array[Byte]): AbstractFile = {
+  def pickleFileNamed(name: String, ir: IR): AbstractFile = {
     Option(lookupName(name, directory = false)) getOrElse {
       val fullPath = s"$path/$name"
-      val newFile = new PickleVirtualFile(name, fullPath, bytes, Some(this))
+      val newFile = new PickleVirtualFile(name, fullPath, ir, Some(this))
       children(name) = newFile
       newFile
     }
@@ -54,15 +56,16 @@ final class PickleVirtualDirectory(
  *
  * @param name The name of the virtual file.
  * @param path The path of the resource.
- * @param bytes The bytes representing the pickle.
+ * @param ir The IR instance containing the pickle bytes.
  * @param maybeContainer A parent directory. `None` if any.
  */
 final class PickleVirtualFile(
     name: String,
     path: String,
-    bytes: Array[Byte],
+    val ir: IR,
     maybeContainer: Option[VirtualDirectory]
 ) extends VirtualFile(name, path) {
+  private val bytes = ir.content()
   override def input: InputStream = new ByteArrayInputStream(bytes)
   override def sizeOption: Option[Int] = Some(bytes.length)
   override def container: AbstractFile = maybeContainer.getOrElse(NoAbstractFile)

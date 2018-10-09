@@ -15,6 +15,7 @@ import xsbti.api._
 import xsbti.compile.{
   CompileAnalysis,
   DependencyChanges,
+  IR,
   IncOptions,
   Output,
   ClassFileManager => XClassFileManager
@@ -59,7 +60,7 @@ object IncrementalCompile {
       output: Output,
       log: Logger,
       options: IncOptions,
-      picklePromise: CompletableFuture[Optional[URI]]
+      irPromise: CompletableFuture[Array[IR]]
   ): (Boolean, Analysis) = {
     val previous = previous0 match { case a: Analysis => a }
     val current = Stamps.initial(Stamper.forLastModified, Stamper.forHash, Stamper.forLastModified)
@@ -81,7 +82,7 @@ object IncrementalCompile {
                                      current,
                                      output,
                                      options,
-                                     picklePromise),
+                                     irPromise),
         log,
         options
       )
@@ -113,7 +114,7 @@ private object AnalysisCallback {
       current: ReadStamps,
       output: Output,
       options: IncOptions,
-      picklePromise: CompletableFuture[Optional[URI]]
+      irPromise: CompletableFuture[Array[IR]]
   ) {
     def build(): AnalysisCallback = new AnalysisCallback(
       internalBinaryToSourceClassName,
@@ -122,7 +123,7 @@ private object AnalysisCallback {
       current,
       output,
       options,
-      picklePromise
+      irPromise
     )
   }
 }
@@ -134,7 +135,7 @@ private final class AnalysisCallback(
     stampReader: ReadStamps,
     output: Output,
     options: IncOptions,
-    picklePromise: CompletableFuture[Optional[URI]]
+    irPromise: CompletableFuture[Array[IR]]
 ) extends xsbti.AnalysisCallback {
 
   private[this] val compilation: Compilation = Compilation(output)
@@ -406,7 +407,7 @@ private final class AnalysisCallback(
 
   override def apiPhaseCompleted(): Unit = {}
   override def dependencyPhaseCompleted(): Unit = {}
-  override def picklerPhaseCompleted(handle: URI): Unit = {
-    picklePromise.complete(Optional.of(handle))
+  override def irCompleted(irs: Array[IR]): Unit = {
+    irPromise.complete(irs)
   }
 }

@@ -1,9 +1,11 @@
 package xsbt
 
-import java.net.URI
+import xsbti.compile.IR
 
 import scala.collection.mutable
+import scala.reflect.internal.FatalError
 import scala.reflect.internal.pickling.PickleBuffer
+import scala.reflect.io.AbstractFile
 import scala.tools.nsc.Phase
 
 final class PicklerGen(val global: CallbackGlobal) extends Compat with GlobalHelpers {
@@ -24,24 +26,18 @@ final class PicklerGen(val global: CallbackGlobal) extends Compat with GlobalHel
           if (settings.fatalWarnings) inform(msg) else warning(msg)
         case None =>
           super.run()
-          val mappings = toMappings(global.currentRun.symData)
-          val handle = genPickleURI
-          val rootVirtual = toVirtualFile(mappings)
-          PicklerGen.urisToRoot.+=((handle, rootVirtual))
-          callback.picklerPhaseCompleted(handle)
+          val irs = toIRs(global.currentRun.symData)
+          callback.irCompleted(irs)
       }
       val stop = System.currentTimeMillis
       debuglog("Picklergen phase took : " + ((stop - start) / 1000.0) + " s")
     }
 
-    def genPickleURI: URI =
-      new URI("pickle", global.hashCode().toString, global.currentRunId.toString)
-
-    case class PickleMapping(name: String, symbol: Symbol, bytes: Array[Byte])
-    def toMappings(pickles: mutable.Map[global.Symbol, PickleBuffer]): List[PickleMapping] = {
-      pickles.toList.flatMap {
+    def toIRs(pickles: mutable.Map[global.Symbol, PickleBuffer]): Array[IR] = {
+      pickles.toArray.flatMap {
         case (symbol, pickle) =>
           val javaName = symbol.javaBinaryNameString
+          val associatedOutput = global.settings.outputDirs.outputDirFor(symbol.associatedFile).file
           val bytes = pickle.bytes.take(pickle.writeIndex)
           if (symbol.isModule) {
             if (symbol.companionClass == NoSymbol) {
@@ -58,45 +54,57 @@ final class PicklerGen(val global: CallbackGlobal) extends Compat with GlobalHel
                * it out in `toIndex`, but still generate a fake class file for it
                * in `toVirtualFile`.
                */
-              List(
-                PickleMapping(javaName, symbol, bytes),
-                PickleMapping(companionJavaName, symbol, Array())
+              Array(
+                new IR(javaName, associatedOutput, bytes),
+                new IR(companionJavaName, associatedOutput, Array())
               )
-            } else List(PickleMapping(javaName, symbol, bytes))
+            } else Array(new IR(javaName, associatedOutput, bytes))
           } else {
-            List(PickleMapping(javaName, symbol, bytes))
+            Array(new IR(javaName, associatedOutput, bytes))
           }
       }
     }
 
-    /**
-     * Transforms pickle mappings to in-memory virtual directories.
-     *
-     * @param mappings The mappings between unique names, symbols and pickle data.
-     * @return The root virtual directory containing all the pickle files of this compilation unit.
-     */
-    def toVirtualFile(mappings: List[PickleMapping]): PickleVirtualDirectory = {
-      val root = new PickleVirtualDirectory(PicklerGen.root, None)
-      mappings.foreach {
-        case PickleMapping(pickleName, _, bytes) =>
-          pickleName.split("/", Integer.MAX_VALUE) match {
-            case Array() => sys.error(s"Unexpected key format ${pickleName}.")
-            case paths =>
-              val parent = paths.init.foldLeft(root) {
-                case (enclosingDir, dirName) =>
-                  enclosingDir.subdirectoryNamed(dirName).asInstanceOf[PickleVirtualDirectory]
-              }
-              parent.pickleFileNamed(s"${paths.last}.class", bytes)
-          }
-      }
-      root
-    }
   }
 }
 
 object PicklerGen {
   def name = "picklergen"
-  final val root = "z☎☠☣☖z"
-  import scala.tools.nsc.io.VirtualDirectory
-  final val urisToRoot: mutable.HashMap[URI, VirtualDirectory] = mutable.HashMap.empty
+  final val rootStartId = "☣☖"
+
+  object PickleFile {
+    import java.io.File
+    def unapply(arg: AbstractFile): Option[File] = {
+      arg match {
+        case vf: PickleVirtualFile =>
+          // The dependency comes from an in-memory ir (build pipelining is enabled)
+          Some(new File(vf.ir.associatedOutput(), vf.path.stripPrefix(PicklerGen.rootStartId)))
+        case _ => None
+      }
+    }
+  }
+
+  /**
+    * Transforms IRs containing Scala pickles to in-memory virtual directories.
+    *
+    * This transformation is done in every compiler run (called by `ZincPicklePath`).
+    *
+    * @param irs A sequence of Scala 2 IRs to turn into a pickle virtual directory.
+    * @return The root virtual directory containing all the pickle files of this compilation unit.
+    */
+  def toVirtualDirectory(irs: Array[IR]): PickleVirtualDirectory = {
+    val root = new PickleVirtualDirectory(PicklerGen.rootStartId, None)
+    irs.foreach { ir =>
+      ir.nameComponents() match {
+        case Array() => throw new FatalError(s"Unexpected empty path component for ${ir}.")
+        case paths =>
+          val parent = paths.init.foldLeft(root) {
+            case (enclosingDir, dirName) =>
+              enclosingDir.subdirectoryNamed(dirName).asInstanceOf[PickleVirtualDirectory]
+          }
+          parent.pickleFileNamed(s"${paths.last}.class", ir)
+      }
+    }
+    root
+  }
 }

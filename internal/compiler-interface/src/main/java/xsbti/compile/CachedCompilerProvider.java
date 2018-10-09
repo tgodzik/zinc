@@ -14,9 +14,9 @@ import xsbti.Reporter;
  * Represent a provider that creates cached Scala compilers from a Scala instance.
  */
 public interface CachedCompilerProvider {
-	/** Return the Scala instance used to provide cached compilers. */
-	ScalaInstance scalaInstance();
+    /** Return the Scala instance used to provide cached compilers. */
+    ScalaInstance scalaInstance();
 
-	/** Return a new cached compiler from the usual compiler input. */
-	CachedCompiler newCachedCompiler(String[] arguments, Output output, Logger log, Reporter reporter);
+    /** Return a new cached compiler from the usual compiler input. */
+    CachedCompiler newCachedCompiler(String[] arguments, Output output, Logger log, Reporter reporter);
 }

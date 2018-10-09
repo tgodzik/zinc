@@ -4,6 +4,9 @@ import java.net.URI
 
 import sbt.internal.inc.UnitSpec
 import xsbti.TestCallback
+import xsbti.compile.{ IR, IRStore }
+
+import scala.collection.mutable.ArrayBuffer
 
 class PickleIndexSpecification extends UnitSpec {
   "Pickle index" should "be collected by Zinc" in {
@@ -14,11 +17,11 @@ class PickleIndexSpecification extends UnitSpec {
   def runTest(): Unit = {
     val pickleArgs = List("-Ygenerate-pickles")
     var generatedIndex: Boolean = false
-    var handles: List[URI] = Nil
+    var handles: Array[IR] = Array.empty
     object IndexTestCallback extends TestCallback {
-      override def picklerPhaseCompleted(uri: URI): Unit = {
+      override def irCompleted(irs: Array[IR]): Unit = {
         generatedIndex = true
-        handles = uri :: handles
+        handles = irs ++ handles
         ()
       }
     }
@@ -94,7 +97,7 @@ class PickleIndexSpecification extends UnitSpec {
     // The compilation is sequential (whereas it could be in parallel), but there
     // is no resource sharing (e.g. class dirs) so it emulates a real-world scenario.
     val compiler.CompilationResult(_, _, compilerA) =
-      compiler.compileProject(projectA, Nil, Nil)
+      compiler.compileProject(projectA, Nil, Array.empty)
     println("Project A is compiled.")
     val compiler.CompilationResult(_, _, compilerB) =
       compiler.compileProject(projectB, Nil, handles)
@@ -141,11 +144,11 @@ class PickleIndexSpecification extends UnitSpec {
         |}
       """.stripMargin
 
-    var handles2: List[URI] = Nil
+    var handles2: Array[IR] = Array.empty
     object IndexTestCallback2 extends TestCallback {
-      override def picklerPhaseCompleted(uri: URI): Unit = {
+      override def irCompleted(irs: Array[IR]): Unit = {
         generatedIndex = true
-        handles2 = uri :: handles2
+        handles2 = irs ++ handles2
         ()
       }
     }
@@ -153,7 +156,7 @@ class PickleIndexSpecification extends UnitSpec {
     // Check that the symbol table is not shared across different compiler instances
     val projectA2 = compiler.Project(List(sourceA2), IndexTestCallback2, pickleArgs)
     val projectB2 = compiler.Project(List(sourceB2), IndexTestCallback2, pickleArgs)
-    compiler.compileProject(projectA2, Nil, Nil)
+    compiler.compileProject(projectA2, Nil, Array.empty)
     println("Project A is compiled again with modifications.")
     compiler.compileProject(projectB2, Nil, handles2)
     println("Project B is compiled again with modifications.")

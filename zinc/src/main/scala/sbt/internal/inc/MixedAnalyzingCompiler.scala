@@ -72,36 +72,18 @@ final class MixedAnalyzingCompiler(
         val arguments =
           cArgs(classpathOptions)(Nil, absClasspath, None, options.scalacOptions)
         timed("Scala compilation", log) {
-          // Set up the pickle path if the underlyin compiler is our analyzing compiler
-          compiler match {
-            case a: AnalyzingCompiler =>
-              a.compileAndSetUpPicklepath(
-                sources.toArray,
-                picklepath.toArray,
-                changes,
-                arguments.toArray,
-                output,
-                callback,
-                reporter,
-                config.cache,
-                log,
-                progress.toOptional
-              )
-            case _ =>
-              if (picklepath.nonEmpty)
-                log.warn(s"Ignoring pickle path because underlying compiler doesn't support it.")
-              compiler.compile(
-                sources.toArray,
-                changes,
-                arguments.toArray,
-                output,
-                callback,
-                reporter,
-                config.cache,
-                log,
-                progress.toOptional
-              )
-          }
+          compiler.compile(
+            sources.toArray,
+            changes,
+            arguments.toArray,
+            output,
+            callback,
+            reporter,
+            config.cache,
+            log,
+            progress.toOptional,
+            config.store
+          )
         }
       }
 
@@ -189,7 +171,7 @@ object MixedAnalyzingCompiler {
       javac: xsbti.compile.JavaCompiler,
       sources: Seq[File],
       classpath: Seq[File],
-      picklepath: Seq[URI],
+      store: IRStore,
       output: Output,
       cache: GlobalsCache,
       progress: Option[CompileProgress] = None,
@@ -232,7 +214,7 @@ object MixedAnalyzingCompiler {
       sources,
       classpath,
       classpathOptions,
-      picklepath,
+      store,
       compileSetup,
       progress,
       previousAnalysis,
@@ -251,7 +233,7 @@ object MixedAnalyzingCompiler {
       sources: Seq[File],
       classpath: Seq[File],
       classpathOptions: ClasspathOptions,
-      picklepath: Seq[URI],
+      store: IRStore,
       setup: MiniSetup,
       progress: Option[CompileProgress],
       previousAnalysis: CompileAnalysis,
@@ -268,7 +250,7 @@ object MixedAnalyzingCompiler {
       sources,
       classpath,
       classpathOptions,
-      picklepath,
+      store,
       previousAnalysis,
       previousSetup,
       setup,
@@ -360,7 +342,7 @@ object MixedAnalyzingCompiler {
   }
 
   /**
-   * Create a an analysis store cache at the desired location.
+   * Create a an analysis put cache at the desired location.
    *
    * Note: This method will be deprecated after Zinc 1.1.
    */

@@ -1,5 +1,6 @@
 package xsbt
 
+import scala.reflect.io.AbstractFile
 import scala.tools.nsc.Phase
 
 final class PicklerGen(val global: CallbackGlobal) extends Compat with GlobalHelpers {
@@ -17,4 +18,10 @@ final class PicklerGen(val global: CallbackGlobal) extends Compat with GlobalHel
 
 object PicklerGen {
   def name = "picklergen"
+  final val rootStartId = "☣☖"
+
+  object PickleFile {
+    import java.io.File
+    def unapply(arg: AbstractFile): Option[File] = None
+  }
 }
