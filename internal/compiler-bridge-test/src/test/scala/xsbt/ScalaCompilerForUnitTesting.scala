@@ -1,7 +1,7 @@
 package xsbt
 
 import xsbti.TestCallback.ExtractedClassDependencies
-import xsbti.compile.{EmptyIRStore, IR, IRStore, Output, SingleOutput}
+import xsbti.compile.{ EmptyIRStore, IR, IRStore, Output, SingleOutput }
 import java.io.File
 import java.net.URI
 import java.nio.file.Files
