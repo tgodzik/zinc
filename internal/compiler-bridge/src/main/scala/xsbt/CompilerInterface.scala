@@ -116,6 +116,10 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
           delegate: Reporter,
           progress: CompileProgress,
           store: IRStore): Unit = synchronized {
+    // Set the IR store before forcing compiler initialization so that the new classpath is picked up
+    if (!store.getDependentsIRs().isEmpty) {
+      compiler.setUpIRStore(store)
+    }
     debug(log, infoOnCachedCompiler(hashCode().toLong.toHexString))
     val dreporter = DelegatingReporter(settings, delegate)
     try { run(sources.toList, changes, callback, log, dreporter, progress, store) } finally {
@@ -140,7 +144,6 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 
     if (noErrors(underlyingReporter)) {
       debug(log, prettyPrintCompilationArguments(args))
-      compiler.setUpIRStore(store)
       compiler.set(callback, underlyingReporter)
       val run = new compiler.ZincRun(compileProgress)
       val sortedSourceFiles = sources.map(_.getAbsolutePath).sortWith(_ < _)

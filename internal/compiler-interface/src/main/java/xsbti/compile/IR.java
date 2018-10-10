@@ -29,7 +29,7 @@ public class IR {
      * Returns all the name components of `name`.
      */
     public String[] nameComponents() {
-        return name.split("/");
+        return name.split("/", java.lang.Integer.MAX_VALUE);
     }
 
     /**

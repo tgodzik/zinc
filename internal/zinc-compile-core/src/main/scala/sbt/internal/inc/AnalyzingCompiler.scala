@@ -61,7 +61,8 @@ final class AnalyzingCompiler(
       callback: AnalysisCallback,
       maximumErrors: Int,
       cache: GlobalsCache,
-      log: ManagedLogger
+      log: ManagedLogger,
+      store: IRStore
   ): Unit = {
     val compArgs = new CompilerArguments(scalaInstance, classpathOptions)
     val arguments = compArgs(Nil, classpath, None, options)
@@ -70,7 +71,18 @@ final class AnalyzingCompiler(
     val reporterConfig = basicReporterConfig.withMaximumErrors(maximumErrors)
     val reporter = ReporterManager.getReporter(log, reporterConfig)
     val progress = Optional.empty[CompileProgress]
-    compile(sources, changes, arguments.toArray, output, callback, reporter, cache, log, progress)
+    compile(
+      sources,
+      changes,
+      arguments.toArray,
+      output,
+      callback,
+      reporter,
+      cache,
+      log,
+      progress,
+      store
+    )
   }
 
   @deprecated("Use the `compile` variant that takes an IR store directly instead.")
@@ -113,9 +125,13 @@ final class AnalyzingCompiler(
   ): Unit = {
     val cached = cache(options, output, !changes.isEmpty, this, log, reporter)
     val progress = if (progressOpt.isPresent) progressOpt.get else IgnoreProgress
-    compile(sources, changes, callback, log, reporter, progress, cached)
+    compile(sources, changes, callback, log, reporter, progress, store, cached)
   }
 
+  /**
+   * @deprecated Use the variant that takes an IR store.
+   */
+  @Deprecated
   override def compile(
       sources: Array[File],
       changes: DependencyChanges,
