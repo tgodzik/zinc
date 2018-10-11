@@ -11,7 +11,7 @@ import xsbti.{ AnalysisCallback, Logger, Problem, Reporter }
 import xsbti.compile._
 
 import scala.collection.mutable
-import Log.debug
+import Log.{ debug, warn, error }
 import java.io.File
 
 final class CompilerInterface {
@@ -22,6 +22,19 @@ final class CompilerInterface {
       initialDelegate: Reporter
   ): CachedCompiler = new CachedCompiler0(options, output, new WeakLog(initialLog, initialDelegate))
 
+  private var store0: IRStore = null
+
+  /**
+   * Sets the IR store of a compiler run before [[run]] is called.
+   *
+   * The method is not added to the interface of `CompilerInterface` because
+   * we still support JDK 6 (Scala 2.10 support) and there's no way we can
+   * add a new method to the interface in a non binary breaking way.
+   */
+  def setIRStore(store: IRStore): Unit = {
+    store0 = store
+  }
+
   def run(
       sources: Array[File],
       changes: DependencyChanges,
@@ -29,9 +42,47 @@ final class CompilerInterface {
       log: Logger,
       delegate: Reporter,
       progress: CompileProgress,
-      store: IRStore,
       cached: CachedCompiler
-  ): Unit = cached.run(sources, changes, callback, log, delegate, progress, store)
+  ): Unit = {
+    cached match {
+      case cached: CachedCompiler0 =>
+        val store: IRStore = {
+          if (store0 != null) store0
+          else {
+            warn(log, "Expected store in compiler interface! Build pipelining is misconfigured.")
+            EmptyIRStore.getStore()
+          }
+        }
+
+        cached.run(sources, changes, callback, log, delegate, progress, store)
+      case _ => error(log, "Fatal: compiler is not of subtype `CachedCompiler0`.")
+    }
+  }
+
+  /**
+   * Reset the global cache used for the classpaths created from IRs. If the
+   * IRs were not created by this compiler classloader, they will be ignored.
+   *
+   * This method is usually called by the build tool when it knows that the
+   * IRs will not be useful anymore (for example, because a compilation run
+   * for a subset of the build is finished), or when there has been an error.
+   *
+   * The method is not added to the interface of `CompilerInterface` because
+   * we still support JDK 6 (Scala 2.10 support) and there's no way we can
+   * add a new method to the interface in a non binary breaking way.
+   *
+   * @param store The store that contains all the IRs whose caches will be removed.
+   */
+  def resetGlobalIRCaches(
+      store: IRStore,
+      cached: CachedCompiler,
+      log: Logger
+  ): Unit = {
+    cached match {
+      case cached: CachedCompiler0 => cached.resetIRCaches(store)
+      case _                       => error(log, "Fatal: compiler is not of subtype `CachedCompiler0`.")
+    }
+  }
 }
 
 class InterfaceCompileFailed(val arguments: Array[String],
@@ -127,8 +178,8 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
     }
   }
 
-  def resetGlobalState(): Unit = {
-    compiler.clearStore()
+  def resetIRCaches(store: IRStore): Unit = {
+    compiler.clearStore(store)
   }
 
   private def prettyPrintCompilationArguments(args: Array[String]) =

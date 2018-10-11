@@ -134,4 +134,15 @@ public interface ScalaCompiler {
                  Logger log,
                  Optional<CompileProgress> progressOpt,
                  IRStore store);
+
+    /**
+     * Reset the global IR caches that are persisted across different
+     * runs. These caches contain ir-related classpaths that are expensive to
+     * construct and their in-memory representation.
+     *
+     * @param store  The IR store that contains the IRs whose state we want to reset.
+     * @param cached The cached compiler that enables us to call the reset method.
+     * @param log    A logger for reporting issues when resetting the state.
+     */
+    void resetGlobalIRCaches(IRStore store, CachedCompiler cached, Logger log);
 }

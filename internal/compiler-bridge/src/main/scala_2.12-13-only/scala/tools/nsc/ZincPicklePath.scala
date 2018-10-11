@@ -17,9 +17,11 @@ trait ZincPicklePath {
   /** Returns the active IR store, set by [[setUpIRStore()]] and cleared by [[clearStore()]]. */
   def store: IRStore = store0
 
-  def clearStore(): Unit = {
+  def clearStore(store: IRStore): Unit = {
     this.store0 = EmptyIRStore.getStore()
-    PicklerGen.resetCache()
+    store.getDependentsIRs.foreach { irs =>
+      PicklerGen.removeCacheForIRs(irs)
+    }
   }
 
   private[this] var originalClassPath: ClassPath = null

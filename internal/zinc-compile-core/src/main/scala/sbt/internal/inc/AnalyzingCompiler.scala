@@ -14,6 +14,7 @@ import java.io.File
 import java.net.URLClassLoader
 import java.util.Optional
 
+import xsbt.Log
 import sbt.util.Logger
 import sbt.io.syntax._
 import sbt.internal.inc.classpath.ClassLoaderCache
@@ -85,7 +86,7 @@ final class AnalyzingCompiler(
     )
   }
 
-  @deprecated("Use the `compile` variant that takes an IR store directly instead.")
+  @deprecated("Use the `compile` variant that takes an IR store directly instead.", "1.3.0")
   override def compile(
       sources: Array[File],
       changes: DependencyChanges,
@@ -154,6 +155,7 @@ final class AnalyzingCompiler(
       store: IRStore,
       compiler: CachedCompiler
   ): Unit = {
+    setStoreToUnderlyingCompiler(store, log)
     onArgsHandler(compiler.commandArguments(sources))
     call("xsbt.CompilerInterface", "run", log)(
       classOf[Array[File]],
@@ -162,9 +164,47 @@ final class AnalyzingCompiler(
       classOf[xLogger],
       classOf[Reporter],
       classOf[CompileProgress],
-      classOf[IRStore],
       classOf[CachedCompiler]
-    )(sources, changes, callback, log, reporter, progress, store, compiler)
+    )(sources, changes, callback, log, reporter, progress, compiler)
+    ()
+  }
+
+  override def resetGlobalIRCaches(
+      store: IRStore,
+      cached: CachedCompiler,
+      logger: xLogger
+  ): Unit = {
+    try {
+      call("xsbt.CompilerInterface", "resetGlobalIRCaches", logger)(
+        classOf[IRStore],
+        classOf[CachedCompiler],
+        classOf[Logger]
+      )(store, cached, logger)
+    } catch {
+      // The compiler doesn't implement it yet (e.g. Dotty's bridge hasn't been updated)
+      case _: xsbti.CompileFailed =>
+        Log.debug(
+          logger,
+          "Missing `resetGlobalIRCaches` entrypoint in compiler interface means the compiler doesn't support pipelining yet."
+        )
+        ()
+    }
+    ()
+  }
+
+  /** Call the `setIRStore` hook in compiler interface to set the IR store in the compiler. */
+  private def setStoreToUnderlyingCompiler(store: IRStore, logger: xLogger): Unit = {
+    try {
+      call("xsbt.CompilerInterface", "setIRStore", logger)(classOf[IRStore])(store)
+    } catch {
+      // The compiler doesn't implement it yet (e.g. Dotty's bridge hasn't been updated)
+      case _: xsbti.CompileFailed =>
+        Log.debug(
+          logger,
+          "Missing `setIRStore` entrypoint in compiler interface means the compiler doesn't support pipelining yet."
+        )
+        ()
+    }
     ()
   }
 

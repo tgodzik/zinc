@@ -20,10 +20,13 @@ trait ZincPicklePath {
   /** Returns the active IR store, set by [[setUpIRStore()]] and cleared by [[clearStore()]]. */
   def store: IRStore = store0
 
-  def clearStore(): Unit = {
+  def clearStore(store: IRStore): Unit = {
     this.store0 = EmptyIRStore.getStore()
-    classpathCache.clear()
-    PicklerGen.resetCache()
+    store.getDependentsIRs.foreach { irs =>
+      val pickleDir = PicklerGen.removeCacheForIRs(irs)
+      // If null it means the IRs were created by different Scala minor version (2.12.1 vs 2.12.4)
+      if (pickleDir != null) classpathCache.remove(pickleDir)
+    }
   }
 
   private val classpathCache =
