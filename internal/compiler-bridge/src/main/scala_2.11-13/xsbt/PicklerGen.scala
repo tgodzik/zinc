@@ -89,6 +89,8 @@ object PicklerGen {
 
   private val virtualDirectoryCache = new ConcurrentHashMap[Array[IR], PickleVirtualDirectory]()
 
+  def resetCache(): Unit = virtualDirectoryCache.clear()
+
   /**
    * Transforms IRs containing Scala pickles to in-memory virtual directories.
    *

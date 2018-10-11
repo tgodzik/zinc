@@ -174,8 +174,8 @@ class ScalaCompilerForUnitTesting {
     }
   }
 
-  final class IRStoreImpl(irs: Array[IR]) extends IRStore {
-    override def getDependentsIRs: Array[Array[IR]] = Array(irs)
+  final class IRStoreImpl(irs: Array[Array[IR]]) extends IRStore {
+    override def getDependentsIRs: Array[Array[IR]] = irs
     override def merge(other: IRStore): IRStore = new IRStoreImpl(other.getDependentsIRs() ++ irs)
   }
 
@@ -198,7 +198,7 @@ class ScalaCompilerForUnitTesting {
         .getOrElse(prepareCompiler(classesDir, callback, fullClasspath, project.compilerArgs))
 
       if (!irs.isEmpty) {
-        compiler.setUpIRStore(new IRStoreImpl(irs))
+        compiler.setUpIRStore(new IRStoreImpl(Array(irs)))
       }
 
       val run = new compiler.Run

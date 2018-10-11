@@ -259,7 +259,6 @@ sealed class ZincCompiler(
 
   final def set(callback: AnalysisCallback, dreporter: DelegatingReporter): Unit = {
     this.callback0 = callback
-    this.clearStore()
     reporter = dreporter
   }
 

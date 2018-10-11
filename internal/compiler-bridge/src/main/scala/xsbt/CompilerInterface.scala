@@ -127,6 +127,10 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
     }
   }
 
+  def resetGlobalState(): Unit = {
+    compiler.clearStore()
+  }
+
   private def prettyPrintCompilationArguments(args: Array[String]) =
     args.mkString("[zinc] The Scala compiler is invoked with:\n\t", "\n\t", "")
   private val StopInfoError = "Compiler option supplied that disabled Zinc compilation."

@@ -19,6 +19,7 @@ trait ZincPicklePath {
 
   def clearStore(): Unit = {
     this.store0 = EmptyIRStore.getStore()
+    PicklerGen.resetCache()
   }
 
   private[this] var originalClassPath: ClassPath = null
