@@ -1,15 +1,16 @@
 package scala.tools.nsc
 
-import java.net.{URI, URL}
+import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 
-import xsbt.{CallbackGlobal, PickleVirtualDirectory, PickleVirtualFile, PicklerGen}
-import xsbti.compile.{EmptyIRStore, IRStore}
+import xsbt.{ PickleVirtualDirectory, PickleVirtualFile, PicklerGen }
+import xsbti.compile.{ EmptyIRStore, IR, IRStore }
 
 import scala.collection.immutable
 import scala.tools.nsc.io.AbstractFile
 import scala.tools.nsc.util.ClassPath
 import scala.tools.nsc.util.ClassPath.ClassPathContext
-import scala.tools.nsc.util.{DirectoryClassPath, MergedClassPath}
+import scala.tools.nsc.util.{ DirectoryClassPath, MergedClassPath }
 
 trait ZincPicklePath {
   self: Global =>
@@ -21,15 +22,27 @@ trait ZincPicklePath {
 
   def clearStore(): Unit = {
     this.store0 = EmptyIRStore.getStore()
+    classpathCache.clear()
     PicklerGen.resetCache()
   }
+
+  private val classpathCache =
+    new ConcurrentHashMap[PickleVirtualDirectory, ZincVirtualDirectoryClassPath]()
 
   private[this] var originalClassPath: ClassPath[AbstractFile] = null
   def setUpIRStore(store: IRStore): Unit = {
     val rootPickleDirs = store.getDependentsIRs.map(PicklerGen.toVirtualDirectory(_))
     // When resident compilation is enabled, make sure `platform.classPath` points to the original classpath
     val context = platform.classPath.context
-    val pickleClassPaths = rootPickleDirs.map(new ZincVirtualDirectoryClassPath(_, context)).toList
+    val pickleClassPaths = rootPickleDirs.map { pickleDir =>
+      classpathCache.computeIfAbsent(
+        pickleDir,
+        new java.util.function.Function[PickleVirtualDirectory, ZincVirtualDirectoryClassPath] {
+          override def apply(t: PickleVirtualDirectory): ZincVirtualDirectoryClassPath =
+            new ZincVirtualDirectoryClassPath(t, context)
+        }
+      )
+    }.toList
 
     // We do this so that when resident compilation is enabled, pipelining works
     if (originalClassPath == null) {
@@ -42,12 +55,12 @@ trait ZincPicklePath {
   }
 
   /**
-    * Create our own zinc virtual directory classpath so that we can inject
-    * the pickle information from them, similar to the way we do this in 2.12.
-    *
-    * @param dir The pickle virtual directory.
-    * @param context The classpath context.
-    */
+   * Create our own zinc virtual directory classpath so that we can inject
+   * the pickle information from them, similar to the way we do this in 2.12.
+   *
+   * @param dir The pickle virtual directory.
+   * @param context The classpath context.
+   */
   case class ZincVirtualDirectoryClassPath(
       override val dir: PickleVirtualDirectory,
       override val context: ClassPathContext[AbstractFile]
@@ -58,11 +71,13 @@ trait ZincPicklePath {
     override lazy val (packages, classes) = {
       val classBuf = immutable.Vector.newBuilder[ClassRep]
       val packageBuf = immutable.Vector.newBuilder[DirectoryClassPath]
-      dir.iterator foreach { f =>
+      dir.children.valuesIterator.foreach { f =>
         f match {
-          case dir: PickleVirtualDirectory if validPackage(dir.name) =>
-            packageBuf += new ZincVirtualDirectoryClassPath(dir, context)
-          case file: PickleVirtualFile if validClassFile(file.name) =>
+          case dir: PickleVirtualDirectory =>
+            val name = dir.name
+            if ((name != "") && (name.charAt(0) != '.'))
+              packageBuf += new ZincVirtualDirectoryClassPath(dir, context)
+          case file: PickleVirtualFile =>
             classBuf += ClassRep(Some(file), None)
           case _ => ()
         }
