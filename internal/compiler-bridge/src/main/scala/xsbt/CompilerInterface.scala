@@ -49,7 +49,7 @@ final class CompilerInterface {
         val store: IRStore = {
           if (store0 != null) store0
           else {
-            warn(log, "Expected store in compiler interface! Build pipelining is misconfigured.")
+            //warn(log, "Expected store in compiler interface! Build pipelining is misconfigured.")
             EmptyIRStore.getStore()
           }
         }
