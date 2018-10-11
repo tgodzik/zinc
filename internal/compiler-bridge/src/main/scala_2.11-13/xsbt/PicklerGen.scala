@@ -1,5 +1,8 @@
 package xsbt
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.function
+
 import xsbti.compile.IR
 
 import scala.collection.mutable
@@ -84,27 +87,38 @@ object PicklerGen {
     }
   }
 
+  private val virtualDirectoryCache = new ConcurrentHashMap[Array[IR], PickleVirtualDirectory]()
+
   /**
-    * Transforms IRs containing Scala pickles to in-memory virtual directories.
-    *
-    * This transformation is done in every compiler run (called by `ZincPicklePath`).
-    *
-    * @param irs A sequence of Scala 2 IRs to turn into a pickle virtual directory.
-    * @return The root virtual directory containing all the pickle files of this compilation unit.
-    */
+   * Transforms IRs containing Scala pickles to in-memory virtual directories.
+   *
+   * This transformation is done in every compiler run (called by `ZincPicklePath`).
+   *
+   * @param irs A sequence of Scala 2 IRs to turn into a pickle virtual directory.
+   * @return The root virtual directory containing all the pickle files of this compilation unit.
+   */
   def toVirtualDirectory(irs: Array[IR]): PickleVirtualDirectory = {
-    val root = new PickleVirtualDirectory(PicklerGen.rootStartId, None)
-    irs.foreach { ir =>
-      ir.nameComponents() match {
-        case Array() => throw new FatalError(s"Unexpected empty path component for ${ir}.")
-        case paths =>
-          val parent = paths.init.foldLeft(root) {
-            case (enclosingDir, dirName) =>
-              enclosingDir.subdirectoryNamed(dirName).asInstanceOf[PickleVirtualDirectory]
-          }
-          parent.pickleFileNamed(s"${paths.last}.class", ir)
+    def toDir(irs: Array[IR]): PickleVirtualDirectory = {
+      val root = new PickleVirtualDirectory(PicklerGen.rootStartId, None)
+      irs.foreach { ir =>
+        ir.nameComponents() match {
+          case Array() => throw new FatalError(s"Unexpected empty path component for ${ir}.")
+          case paths =>
+            val parent = paths.init.foldLeft(root) {
+              case (enclosingDir, dirName) =>
+                enclosingDir.subdirectoryNamed(dirName).asInstanceOf[PickleVirtualDirectory]
+            }
+            parent.pickleFileNamed(s"${paths.last}.class", ir)
+        }
       }
+      root
     }
-    root
+
+    virtualDirectoryCache.computeIfAbsent(
+      irs,
+      new function.Function[Array[IR], PickleVirtualDirectory] {
+        override def apply(t: Array[IR]): PickleVirtualDirectory = toDir(t)
+      }
+    )
   }
 }

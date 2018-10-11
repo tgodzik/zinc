@@ -9,8 +9,8 @@ public class EmptyIRStore implements IRStore {
     }
 
     @Override
-    public IR[] getDependentsIRs() {
-        return new IR[0];
+    public IR[][] getDependentsIRs() {
+        return new IR[0][0];
     }
 
     @Override

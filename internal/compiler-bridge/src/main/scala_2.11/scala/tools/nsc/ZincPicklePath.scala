@@ -25,17 +25,17 @@ trait ZincPicklePath {
 
   private[this] var originalClassPath: ClassPath[AbstractFile] = null
   def setUpIRStore(store: IRStore): Unit = {
-    val rootPickleDirs = PicklerGen.toVirtualDirectory(store.getDependentsIRs())
+    val rootPickleDirs = store.getDependentsIRs.map(PicklerGen.toVirtualDirectory(_))
     // When resident compilation is enabled, make sure `platform.classPath` points to the original classpath
     val context = platform.classPath.context
-    val pickleClassPaths = new ZincVirtualDirectoryClassPath(rootPickleDirs, context)
+    val pickleClassPaths = rootPickleDirs.map(new ZincVirtualDirectoryClassPath(_, context)).toList
 
     // We do this so that when resident compilation is enabled, pipelining works
     if (originalClassPath == null) {
       originalClassPath = platform.classPath
     }
 
-    val newEntries = List(pickleClassPaths) ++: originalClassPath.entries
+    val newEntries = pickleClassPaths ++ originalClassPath.entries
     val newClassPath = new MergedClassPath(newEntries, context)
     platform.currentClassPath = Some(newClassPath)
   }

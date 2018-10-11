@@ -175,7 +175,7 @@ class ScalaCompilerForUnitTesting {
   }
 
   final class IRStoreImpl(irs: Array[IR]) extends IRStore {
-    override def getDependentsIRs: Array[IR] = irs
+    override def getDependentsIRs: Array[Array[IR]] = Array(irs)
     override def merge(other: IRStore): IRStore = new IRStoreImpl(other.getDependentsIRs() ++ irs)
   }
 

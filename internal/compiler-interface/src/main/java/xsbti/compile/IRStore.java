@@ -11,7 +11,7 @@ public interface IRStore {
     * to obtain all the IRs of the dependent modules of a project to populate the
     * symbol table.
     */
-   IR[] getDependentsIRs();
+   IR[][] getDependentsIRs();
 
    /**
     * Merges two store instances and its corresponding IRs.
