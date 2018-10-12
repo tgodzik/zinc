@@ -31,8 +31,11 @@ final class CompilerInterface {
    * we still support JDK 6 (Scala 2.10 support) and there's no way we can
    * add a new method to the interface in a non binary breaking way.
    */
-  def setIRStore(store: IRStore): Unit = {
-    store0 = store
+  def setIRStore(store: IRStore, cached: CachedCompiler, log: Logger): Unit = {
+    cached match {
+      case cached: CachedCompiler0 => cached.setIRStore(store)
+      case _                       => error(log, "Fatal: compiler is not of subtype `CachedCompiler0`.")
+    }
   }
 
   def run(
@@ -43,21 +46,7 @@ final class CompilerInterface {
       delegate: Reporter,
       progress: CompileProgress,
       cached: CachedCompiler
-  ): Unit = {
-    cached match {
-      case cached: CachedCompiler0 =>
-        val store: IRStore = {
-          if (store0 != null) store0
-          else {
-            //warn(log, "Expected store in compiler interface! Build pipelining is misconfigured.")
-            EmptyIRStore.getStore()
-          }
-        }
-
-        cached.run(sources, changes, callback, log, delegate, progress, store)
-      case _ => error(log, "Fatal: compiler is not of subtype `CachedCompiler0`.")
-    }
-  }
+  ): Unit = cached.run(sources, changes, callback, log, delegate, progress)
 
   /**
    * Reset the global cache used for the classpaths created from IRs. If the
@@ -151,13 +140,26 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
   def infoOnCachedCompiler(compilerId: String): String =
     s"[zinc] Running cached compiler $compilerId for Scala compiler $versionString"
 
+  private var store0: IRStore = null
+  def setIRStore(store: IRStore): Unit = {
+    store0 = store
+  }
+
   def run(sources: Array[File],
           changes: DependencyChanges,
           callback: AnalysisCallback,
           log: Logger,
           reporter: Reporter,
           compileProgress: CompileProgress): Unit = {
-    run(sources, changes, callback, log, reporter, compileProgress, EmptyIRStore.getStore)
+    val store = {
+      if (store0 != null) store0
+      else {
+        warn(log, "Expected store in compiler interface! Build pipelining is misconfigured.")
+        EmptyIRStore.getStore()
+      }
+    }
+
+    run(sources, changes, callback, log, reporter, compileProgress, store)
   }
 
   def run(sources: Array[File],

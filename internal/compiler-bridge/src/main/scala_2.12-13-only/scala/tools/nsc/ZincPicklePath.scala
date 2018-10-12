@@ -2,8 +2,8 @@ package scala.tools.nsc
 
 import java.net.URL
 
-import xsbt.{PickleVirtualDirectory, PicklerGen}
-import xsbti.compile.{EmptyIRStore, IR, IRStore}
+import xsbt.PicklerGen
+import xsbti.compile.{EmptyIRStore, IRStore}
 
 import scala.tools.nsc.classpath.{AggregateClassPath, VirtualDirectoryClassPath}
 import scala.tools.nsc.io.VirtualDirectory
