@@ -48,7 +48,6 @@ trait ZincPickleCompletion {
       val pickle = modulePickleFile.toByteArray
       unpickler.unpickle(pickle, 0, clazz, module, pickleFile.path)
     } else {
-      println(s"Error: empty pickle found in ${pickleFile.toString}, trying to recover...")
       val moduleFileName = pickleFile.name.stripSuffix(".class") + "$.class"
       val modulePickleFile = pickleFile.container.fileNamed(moduleFileName)
       val pickle = modulePickleFile.toByteArray
