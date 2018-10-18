@@ -131,10 +131,10 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
             binaryDependency(f, binaryClassName)
 
           case _ =>
-            reporter.error(
-              NoPosition,
-              s"Internal error: ${binaryClassName} comes from unknown origin ${at}"
-            )
+          //reporter.error(
+          //  NoPosition,
+          //  s"Internal error: ${binaryClassName} comes from unknown origin ${at}"
+          //)
         }
       }
 
