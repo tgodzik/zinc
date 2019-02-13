@@ -43,8 +43,13 @@ object ClassFileManager {
   }
 
   private final class DeleteClassFileManager extends XClassFileManager {
-    override def delete(classes: Array[File]): Unit =
+    private val deletedClasses = new mutable.HashSet[File]
+    override def delete(classes: Array[File]): Unit = {
+      classes.foreach(classFile => deletedClasses.add(classFile))
       IO.deleteFilesEmptyDirs(classes)
+    }
+
+    override def invalidatedClassFiles(): Array[File] = deletedClasses.toArray
     override def generated(classes: Array[File]): Unit = ()
     override def complete(success: Boolean): Unit = ()
   }
@@ -88,6 +93,10 @@ object ClassFileManager {
         movedClasses.put(c, move(c))
       }
       IO.deleteFilesEmptyDirs(classes)
+    }
+
+    override def invalidatedClassFiles(): Array[File] = {
+      movedClasses.keySet.toArray
     }
 
     override def generated(classes: Array[File]): Unit = {
