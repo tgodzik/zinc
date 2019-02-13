@@ -37,7 +37,7 @@ public interface ScalaCompiler {
      * @param progress Where to report the file being currently compiled.
      * @param compiler The actual compiler that will perform the compilation step.
      *
-     * @deprecated Use {@link #compile(File[], DependencyChanges, String[], Output, AnalysisCallback, Reporter, GlobalsCache, Logger, Optional, IRStore)} instead,
+     * @deprecated Use {@link #compile(File[], DependencyChanges, String[], Output, AnalysisCallback, Reporter, GlobalsCache, Logger, Optional, IRStore, File[])} instead,
      * which specifies the IR store to be used for compilation.
      */
     @Deprecated
@@ -70,6 +70,7 @@ public interface ScalaCompiler {
                  Reporter reporter,
                  CompileProgress progress,
                  IRStore store,
+                 File[] invalidatedClassFiles,
                  CachedCompiler compiler);
 
     /**
@@ -133,7 +134,8 @@ public interface ScalaCompiler {
                  GlobalsCache cache,
                  Logger log,
                  Optional<CompileProgress> progressOpt,
-                 IRStore store);
+                 IRStore store,
+                 File[] invalidatedClassFiles);
 
     /**
      * Reset the global IR caches that are persisted across different

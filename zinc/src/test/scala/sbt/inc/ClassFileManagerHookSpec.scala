@@ -17,6 +17,9 @@ class ClassFileManagerHookSpec extends BaseCompilerSpec {
         override def delete(classes: Array[File]): Unit = {
           callbackCalled += 1
         }
+        override def invalidatedClassFiles(): Array[File] = {
+          new Array[File](0)
+        }
         override def generated(classes: Array[File]): Unit = {
           callbackCalled += 1
         }

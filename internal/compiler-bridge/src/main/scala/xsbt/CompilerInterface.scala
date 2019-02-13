@@ -45,8 +45,9 @@ final class CompilerInterface {
       log: Logger,
       delegate: Reporter,
       progress: CompileProgress,
+      invalidatedClassFiles: Array[File],
       cached: CachedCompiler
-  ): Unit = cached.run(sources, changes, callback, log, delegate, progress)
+  ): Unit = cached.run(sources, changes, callback, log, delegate, progress, invalidatedClassFiles)
 
   /**
    * Reset the global cache used for the classpaths created from IRs. If the
@@ -145,12 +146,18 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
     store0 = store
   }
 
+  private var invalidatedClassFiles0: Array[File] = Array()
+  def setInvalidatedClassFiles(invalidatedClassFiles: Array[File]): Unit = {
+    invalidatedClassFiles0 = invalidatedClassFiles
+  }
+
   def run(sources: Array[File],
           changes: DependencyChanges,
           callback: AnalysisCallback,
           log: Logger,
           reporter: Reporter,
-          compileProgress: CompileProgress): Unit = {
+          compileProgress: CompileProgress,
+          invalidatedClassFiles: Array[File]): Unit = {
     val store = {
       if (store0 != null) store0
       else {
@@ -159,7 +166,7 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
       }
     }
 
-    run(sources, changes, callback, log, reporter, compileProgress, store)
+    run(sources, changes, callback, log, reporter, compileProgress, store, invalidatedClassFiles)
   }
 
   def run(sources: Array[File],
@@ -168,14 +175,15 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
           log: Logger,
           delegate: Reporter,
           progress: CompileProgress,
-          store: IRStore): Unit = synchronized {
+          store: IRStore,
+          invalidatedClassFiles: Array[File]): Unit = synchronized {
     // Set the IR store before forcing compiler initialization so that the new classpath is picked up
     if (!store.getDependentsIRs().isEmpty) {
       compiler.setUpIRStore(store)
     }
     debug(log, infoOnCachedCompiler(hashCode().toLong.toHexString))
     val dreporter = DelegatingReporter(settings, delegate)
-    try { run(sources.toList, changes, callback, log, dreporter, progress, store) } finally {
+    try { run(sources.toList, changes, callback, log, dreporter, progress, invalidatedClassFiles) } finally {
       dreporter.dropDelegate()
     }
   }
@@ -193,13 +201,14 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
                         log: Logger,
                         underlyingReporter: DelegatingReporter,
                         compileProgress: CompileProgress,
-                        store: IRStore): Unit = {
+                        invalidatedClassFiles: Array[File]): Unit = {
     if (command.shouldStopWithInfo) {
       underlyingReporter.info(null, command.getInfoMessage(compiler), true)
       throw new InterfaceCompileFailed(args, Array(), StopInfoError)
     }
 
     if (noErrors(underlyingReporter)) {
+      compiler.setInvalidatedClassFiles(invalidatedClassFiles)
       debug(log, prettyPrintCompilationArguments(args))
       compiler.set(callback, underlyingReporter)
       val run = new compiler.ZincRun(compileProgress)

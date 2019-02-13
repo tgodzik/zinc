@@ -41,5 +41,21 @@ public interface CachedCompiler {
 	 * @param delegate The reporter that informs on the compiler's output.
 	 * @param progress The compiler progress associated with a Scala compiler.
 	 */
-	void run(File[] sources, DependencyChanges changes, AnalysisCallback callback, Logger logger, Reporter delegate, CompileProgress progress);
+	default void run(File[] sources, DependencyChanges changes, AnalysisCallback callback, Logger logger, Reporter delegate, CompileProgress progress) {
+		run(sources, changes, callback, logger, delegate, progress, new File[0]);
+	}
+
+	/**
+	 * Run the cached Scala compiler with inputs of incremental compilation, this time
+	 * with an array of invalidated class files.
+	 *
+	 * @param sources The source files to be compiled.
+	 * @param changes The changes that have occurred since last compilation.
+	 * @param callback The callback injected by the incremental compiler.
+	 * @param logger The logger of the incremental compilation.
+	 * @param delegate The reporter that informs on the compiler's output.
+	 * @param progress The compiler progress associated with a Scala compiler.
+	 * @param invalidatedClassFiles An array of invalidated class files.
+	 */
+	void run(File[] sources, DependencyChanges changes, AnalysisCallback callback, Logger logger, Reporter delegate, CompileProgress progress, File[] invalidatedClassFiles);
 }
