@@ -63,7 +63,8 @@ final class AnalyzingCompiler(
       maximumErrors: Int,
       cache: GlobalsCache,
       log: ManagedLogger,
-      store: IRStore
+      store: IRStore,
+      invalidatedClassFiles: Array[File]
   ): Unit = {
     val compArgs = new CompilerArguments(scalaInstance, classpathOptions)
     val arguments = compArgs(Nil, classpath, None, options)
@@ -82,7 +83,8 @@ final class AnalyzingCompiler(
       cache,
       log,
       progress,
-      store
+      store,
+      invalidatedClassFiles
     )
   }
 
@@ -108,7 +110,8 @@ final class AnalyzingCompiler(
       cache,
       log,
       progressOpt,
-      EmptyIRStore.getStore()
+      EmptyIRStore.getStore(),
+      new Array[File](0)
     )
   }
 
@@ -122,11 +125,20 @@ final class AnalyzingCompiler(
       cache: GlobalsCache,
       log: xLogger,
       progressOpt: Optional[CompileProgress],
-      store: IRStore
+      store: IRStore,
+      invalidatedClassFiles: Array[File]
   ): Unit = {
     val cached = cache(options, output, !changes.isEmpty, this, log, reporter)
     val progress = if (progressOpt.isPresent) progressOpt.get else IgnoreProgress
-    compile(sources, changes, callback, log, reporter, progress, store, cached)
+    compile(sources,
+            changes,
+            callback,
+            log,
+            reporter,
+            progress,
+            store,
+            invalidatedClassFiles,
+            cached)
   }
 
   /**
@@ -142,7 +154,15 @@ final class AnalyzingCompiler(
       progress: CompileProgress,
       compiler: CachedCompiler
   ): Unit = {
-    compile(sources, changes, callback, log, reporter, progress, EmptyIRStore.getStore(), compiler)
+    compile(sources,
+            changes,
+            callback,
+            log,
+            reporter,
+            progress,
+            EmptyIRStore.getStore(),
+            new Array[File](0),
+            compiler)
   }
 
   override def compile(
@@ -153,6 +173,7 @@ final class AnalyzingCompiler(
       reporter: Reporter,
       progress: CompileProgress,
       store: IRStore,
+      invalidatedClassFiles: Array[File],
       compiler: CachedCompiler
   ): Unit = {
     setStoreToUnderlyingCompiler(store, compiler, log)
@@ -164,8 +185,9 @@ final class AnalyzingCompiler(
       classOf[xLogger],
       classOf[Reporter],
       classOf[CompileProgress],
+      classOf[Array[File]],
       classOf[CachedCompiler]
-    )(sources, changes, callback, log, reporter, progress, compiler)
+    )(sources, changes, callback, log, reporter, progress, invalidatedClassFiles, compiler)
     ()
   }
 

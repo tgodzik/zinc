@@ -27,6 +27,13 @@ sealed abstract class CallbackGlobal(
     val platform: CallbackGlobal.this.platform.type = CallbackGlobal.this.platform
   } with ZincSymbolLoaders
 
+  def setInvalidatedClassFiles(invalidatedClassFiles: Array[File]): Unit = {
+    loaders.invalidatedClassFilePaths.clear()
+    invalidatedClassFiles.foreach { invalidatedClassFile =>
+      loaders.invalidatedClassFilePaths.+=(invalidatedClassFile.getCanonicalPath)
+    }
+  }
+
   def foundMacroLocation: Option[String]
   def callback: AnalysisCallback
   def findAssociatedFile(name: String): Option[(AbstractFile, Boolean)]

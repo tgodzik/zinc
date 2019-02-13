@@ -82,7 +82,8 @@ final class MixedAnalyzingCompiler(
             config.cache,
             log,
             progress.toOptional,
-            config.store
+            config.store,
+            classfileManager.invalidatedClassFiles
           )
         }
       }

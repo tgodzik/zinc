@@ -7,6 +7,9 @@ import scala.tools.nsc.util.ClassRepresentation
 abstract class ZincSymbolLoaders extends GlobalSymbolLoaders with ZincPickleCompletion {
   import global._
 
+  import java.io.File
+  import scala.collection.mutable
+  val invalidatedClassFilePaths: mutable.HashSet[String] = new mutable.HashSet[String]()
   override def initializeFromClassPath(owner: Symbol,
                                        classRep: ClassRepresentation[AbstractFile]): Unit = {
     ((classRep.binary, classRep.source): @unchecked) match {
@@ -19,7 +22,10 @@ abstract class ZincSymbolLoaders extends GlobalSymbolLoaders with ZincPickleComp
         enterToplevelsFromSource(owner, classRep.name, src)
       case (Some(bin), _) =>
         // If the abstract file comes from our pickle index, use our own loader
-        if (bin.path.startsWith(PicklerGen.rootStartId)) {
+        val classFile: File = bin.file
+        if (classFile != null && invalidatedClassFilePaths.contains(classFile.getCanonicalPath)) {
+          () // An invalidated class file should not be loaded
+        } else if (bin.path.startsWith(PicklerGen.rootStartId)) {
           enterClassAndModule(owner, classRep.name, new ZincPickleLoader(bin))
         } else {
           enterClassAndModule(owner, classRep.name, new ClassfileLoader(bin))
