@@ -21,6 +21,8 @@ import sbt.internal.inc.classpath.ClassLoaderCache
 import sbt.internal.util.ManagedLogger
 import xsbti.{ AnalysisCallback, Reporter, ReporterUtil, Logger => xLogger }
 import xsbti.compile._
+import java.nio.file.Paths
+import java.net.URL
 
 /**
  * Implement a cached incremental [[ScalaCompiler]] that has been instrumented
@@ -377,10 +379,11 @@ final class AnalyzingCompiler(
 
   private[this] def loader(log: Logger) = {
     val interfaceJar = provider.fetchCompiledBridge(scalaInstance, log)
+    val interfaceURL = interfaceJar.toURI.toURL
     def createInterfaceLoader =
       new URLClassLoader(
-        Array(interfaceJar.toURI.toURL),
-        createDualLoader(scalaInstance.loader(), getClass.getClassLoader)
+        Array(interfaceURL),
+        createDualLoader(scalaInstance.loader(), createUrlClassLoader(interfaceURL))
       )
 
     classLoaderCache match {
@@ -390,6 +393,21 @@ final class AnalyzingCompiler(
           () => createInterfaceLoader
         )
       case None => createInterfaceLoader
+    }
+  }
+
+  private def createUrlClassLoader(interface: URL) = {
+    this.getClass.getClassLoader match {
+      case url: URLClassLoader => url
+      case cl
+          if cl.getClass.getName == "jdk.internal.loader.ClassLoaders$AppClassLoader" && interface.toString
+            .contains("dotty") =>
+        // Required with JDK-11
+        val classPath = sys.props.getOrElse("java.class.path", "")
+        val pathSeparator = sys.props.getOrElse("path.separator", "")
+        val allJars = classPath.split(pathSeparator).map(path => Paths.get(path).toUri().toURL())
+        new URLClassLoader(allJars, cl)
+      case els => els
     }
   }
 
